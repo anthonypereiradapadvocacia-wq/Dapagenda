@@ -394,6 +394,9 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     });
   }
   function aceitar(x){
+    // A janela é aberta no clique para evitar bloqueio de pop-up; o WhatsApp
+    // só é aberto depois que a solicitação for aceita e a reunião for criada.
+    var wa=window.open("about:blank","_blank");
     var ex=S.cli.filter(function(c){return c.mail&&c.mail.toLowerCase()===x.mail.toLowerCase();})[0];
     var cp=ex?Promise.resolve(ex.id):sb.from("clientes").insert({nome:x.nome,tel:x.tel,mail:x.mail}).select("id").single().then(function(r){if(r.error)throw r.error;return r.data.id;});
     cp.then(function(cid){
@@ -401,8 +404,24 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     }).then(function(r){
       if(r.error)throw r.error;
       return sb.from("solicitacoes").update({status:"aceita"}).eq("id",x.id);
-    }).then(function(){["cli","reu","sol"].forEach(load);})
-    .catch(function(e){alert("Não foi possível aceitar: "+((e&&e.message)||e));});
+    }).then(function(r){
+      if(r&&r.error)throw r.error;
+      ["cli","reu","sol"].forEach(load);
+      var tel=String(x.tel||"").replace(/\\D/g,"");
+      if(tel.length===10||tel.length===11)tel="55"+tel;
+      if(!tel){
+        if(wa)wa.close();
+        alert("Solicitação aceita, mas o telefone do cliente está vazio. Entre em contato manualmente.");
+        return;
+      }
+      var data=x.data.split("-").reverse().join("/");
+      var texto="Olá, "+x.nome+"! Sua solicitação de reunião para "+data+" às "+String(x.ini).slice(0,5)+" foi aceita pela equipe do escritório Durão & Almeida, Pontes - Advogados Associados. Se precisar, estamos à disposição.";
+      var url="https://wa.me/"+tel+"?text="+encodeURIComponent(texto);
+      if(wa)wa.location.href=url;else window.location.href=url;
+    }).catch(function(e){
+      if(wa)wa.close();
+      alert("Não foi possível aceitar: "+((e&&e.message)||e));
+    });
   }
   function recusar(x){sb.from("solicitacoes").update({status:"recusada"}).eq("id",x.id).then(function(){load("sol");});}
 
