@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Solicitar reunião</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F5F7;--surface:#FFFFFF;--ink:#18263B;--muted:#5B6678;--line:#D9DDE4;--accent:#7A1F2B;--btn-bg:#7A1F2B;--btn-ink:#fff;--sel:#F4E3E6;--err:#B3261E;
+  --serif:"Spectral",Georgia,serif;--sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101722;--surface:#182233;--ink:#E8ECF3;--muted:#9AA6B8;--line:#2A364B;--accent:#E58A96;--btn-bg:#E58A96;--btn-ink:#2A0E13;--sel:#3A1F26;--err:#FF8A80}}
+:root[data-theme="dark"]{--bg:#101722;--surface:#182233;--ink:#E8ECF3;--muted:#9AA6B8;--line:#2A364B;--accent:#E58A96;--btn-bg:#E58A96;--btn-ink:#2A0E13;--sel:#3A1F26;--err:#FF8A80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding:28px 16px 56px}
+.firma{margin:0 0 6px;color:var(--accent);font-weight:600;font-size:15px}
+h1{font-family:var(--serif);font-size:clamp(26px,6vw,34px);line-height:1.15;margin:0 0 6px}
+.lead{color:var(--muted);margin:0 0 24px}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:14px}
+h2{font-size:17px;margin:0 0 12px}
+.opts{display:grid;gap:8px}
+.opt,.chip{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer;text-align:left}
+.opt{padding:10px 14px}
+.opt small{display:block;color:var(--muted);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 12px;font-size:15px;text-align:center}
+.opt[aria-pressed="true"],.chip[aria-pressed="true"]{background:var(--sel);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+label{display:block;font-size:14px;color:var(--muted);margin:12px 0 4px}
+input,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+.lgpd{display:flex;gap:10px;align-items:flex-start;color:var(--ink);font-size:14px}
+.lgpd input{width:auto;margin-top:4px}
+.go{margin-top:16px;width:100%;font:inherit;font-weight:600;padding:12px;border:0;border-radius:8px;background:var(--btn-bg);color:var(--btn-ink);cursor:pointer}
+.go:disabled{opacity:.6;cursor:wait}
+.resumo{background:var(--sel);border-radius:8px;padding:10px 12px;margin:0 0 4px;font-size:15px}
+.hint{color:var(--muted);font-size:14px;margin:8px 0 0}
+.erro{color:var(--err);font-size:14px;margin:10px 0 0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="firma" id="firma"></p>
+  <h1 id="esc">Solicitar reunião</h1>
+  <p class="lead">Escolha o advogado, o dia e um horário livre. Cada reunião tem 30 minutos e será confirmada pela nossa equipe.</p>
+
+  <section id="s0" hidden><p class="erro" id="cfg"></p></section>
+
+  <section id="s1"><h2>1. Escolha o advogado</h2><div class="opts" id="advs"><p class="hint">Carregando…</p></div></section>
+  <section id="s2" hidden><h2>2. Escolha o dia</h2><div class="chips" id="dias"></div></section>
+  <section id="s3" hidden>
+    <h2>3. Escolha o horário</h2>
+    <div class="chips" id="slots"></div>
+    <p class="hint" id="semHor" hidden>Não há horários livres neste dia. Escolha outra data.</p>
+  </section>
+  <section id="s4" hidden>
+    <h2>4. Seus dados</h2>
+    <p class="resumo" id="resumo"></p>
+    <form id="f">
+      <label for="nome">Nome completo</label><input id="nome" required minlength="2" maxlength="120" autocomplete="name">
+      <label for="tel">Telefone com DDD</label><input id="tel" type="tel" required minlength="8" maxlength="30" autocomplete="tel">
+      <label for="mail">E-mail</label><input id="mail" type="email" required maxlength="160" autocomplete="email">
+      <label for="assunto">Assunto da reunião</label><textarea id="assunto" required minlength="3" maxlength="600" placeholder="Conte brevemente o que você precisa."></textarea>
+      <input class="hp" id="site" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="lgpd"><input type="checkbox" id="lgpd" required>Autorizo o escritório a usar estes dados para entrar em contato sobre a reunião.</label>
+      <p class="erro" id="erro" role="alert"></p>
+      <button class="go" id="enviar" type="submit">Solicitar reunião</button>
+    </form>
+  </section>
+  <section id="ok" hidden>
+    <h2>Solicitação enviada</h2>
+    <p id="okTxt"></p>
+    <p class="hint">O horário só está reservado depois da confirmação da nossa equipe, por telefone ou e-mail.</p>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+  /* ---- configuração ---- */
+  var SUPABASE_URL="https://wrbqineebyybytthwjyt.supabase.co";
+  var SUPABASE_ANON_KEY="sb_publishable_BDE5SPULJZwzmkPDkjRgLg_me9V9S3G";
+  var ESCRITORIO="Durão & Almeida, Pontes - Advogados Associados";
+  // Expediente (precisa ser igual ao da função solicitar_reuniao no SQL)
+  var INICIO=9*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
+
+  function $(i){return document.getElementById(i);}
+  function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
+  function pad(n){return (n<10?"0":"")+n;}
+  function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+  function hhmm(m){return pad(Math.floor(m/60))+":"+pad(m%60);}
+  function mins(t){var p=String(t).split(":");return (+p[0])*60+(+p[1]);}
+  function mostrar(id,v){$(id).hidden=!v;}
+  function marcar(box,btn){[].forEach.call(box.children,function(b){b.setAttribute("aria-pressed",b===btn?"true":"false");});}
+  var st={adv:null,data:null,ini:null}, sb=null;
+
+  $("firma").textContent=ESCRITORIO;
+  document.title="Solicitar reunião · "+ESCRITORIO;
+  if(SUPABASE_URL.indexOf("COLE_AQUI")===0){
+    mostrar("s0",true);mostrar("s1",false);
+    $("cfg").textContent="Configure SUPABASE_URL e SUPABASE_ANON_KEY no começo do script (veja o README).";return;
+  }
+  sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+  /* 1) advogados */
+  sb.rpc("listar_advogados").then(function(r){
+    var box=$("advs");box.textContent="";
+    if(r.error||!r.data||!r.data.length){box.appendChild(el("p","hint",r.error?"Não foi possível carregar os advogados. Tente novamente em instantes.":"Nenhum advogado disponível no momento."));return;}
+    r.data.forEach(function(a){
+      var b=el("button","opt");b.type="button";b.setAttribute("aria-pressed","false");
+      b.appendChild(el("span",null,a.nome));if(a.area)b.appendChild(el("small",null,a.area));
+      b.onclick=function(){marcar(box,b);st={adv:a,data:null,ini:null};mostrar("s3",false);mostrar("s4",false);montarDias();mostrar("s2",true);};
+      box.appendChild(b);
+    });
+  });
+
+  /* 2) dias úteis a partir de amanhã */
+  function montarDias(){
+    var box=$("dias");box.textContent="";
+    var d=new Date();d.setHours(12,0,0,0);var n=0;
+    while(n<DIAS){
+      d.setDate(d.getDate()+1);var w=d.getDay();if(w===0||w===6)continue;n++;
+      (function(dt){
+        var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
+        b.type="button";b.setAttribute("aria-pressed","false");
+        b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
+        box.appendChild(b);
+      })(new Date(d));
+    }
+  }
+
+  /* 3) horários livres */
+  function montarHorarios(){
+    var box=$("slots");box.textContent="";mostrar("s3",true);mostrar("semHor",false);
+    box.appendChild(el("span","hint","Carregando horários…"));
+    sb.rpc("horarios_ocupados",{p_advogado:st.adv.id,p_data:st.data}).then(function(r){
+      box.textContent="";
+      if(r.error){box.appendChild(el("span","erro","Não foi possível carregar os horários. Tente novamente."));return;}
+      var oc=(r.data||[]).map(function(o){var s=mins(o.ini);return [s,s+(+o.dur||30)];}),livres=0;
+      for(var m=INICIO;m+DUR<=FIM;m+=30){
+        if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;
+        var ocupado=oc.some(function(o){return o[0]<m+DUR&&o[1]>m;});
+        if(ocupado)continue;livres++;
+        (function(mm){
+          var b=el("button","chip",hhmm(mm));b.type="button";b.setAttribute("aria-pressed","false");
+          b.onclick=function(){marcar(box,b);st.ini=hhmm(mm);resumir();};
+          box.appendChild(b);
+        })(m);
+      }
+      mostrar("semHor",livres===0);
+    });
+  }
+
+  /* 4) dados do cliente */
+  function textoData(){return new Date(st.data+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});}
+  function resumir(){
+    $("resumo").textContent=st.adv.nome+" · "+textoData()+" · "+st.ini+" às "+hhmm(mins(st.ini)+DUR);
+    $("erro").textContent="";mostrar("s4",true);$("nome").focus({preventScroll:true});
+    $("s4").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  $("f").addEventListener("submit",function(e){
+    e.preventDefault();
+    if($("site").value){fim();return;} // anti-robô: campo invisível preenchido
+    var btn=$("enviar");btn.disabled=true;btn.textContent="Enviando…";$("erro").textContent="";
+    sb.rpc("solicitar_reuniao",{
+      p_advogado:st.adv.id,p_data:st.data,p_ini:st.ini,
+      p_nome:$("nome").value,p_tel:$("tel").value,p_mail:$("mail").value,p_assunto:$("assunto").value
+    }).then(function(r){
+      btn.disabled=false;btn.textContent="Solicitar reunião";
+      if(r.error){
+        if(/ocupado|indispon/i.test(r.error.message)){
+          $("erro").textContent="Esse horário acabou de ser reservado. Escolha outro.";mostrar("s4",false);montarHorarios();
+        }else $("erro").textContent="Não foi possível enviar. Confira os dados e tente novamente.";
+        return;
+      }
+      fim();
+    });
+  });
+  function fim(){
+    ["s1","s2","s3","s4"].forEach(function(i){mostrar(i,false);});
+    $("okTxt").textContent="Recebemos seu pedido para "+textoData()+", às "+st.ini+", com "+st.adv.nome+".";
+    mostrar("ok",true);window.scrollTo({top:0,behavior:"smooth"});
+  }
+})();
+</script>
+</body>
+</html>
