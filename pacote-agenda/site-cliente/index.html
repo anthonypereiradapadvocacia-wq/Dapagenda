@@ -88,7 +88,7 @@ textarea{min-height:90px;resize:vertical}
   var SUPABASE_ANON_KEY="sb_publishable_BDE5SPULJZwzmkPDkjRgLg_me9V9S3G";
   var ESCRITORIO="Durão & Almeida, Pontes - Advogados Associados";
   // Expediente (precisa ser igual ao da função solicitar_reuniao no SQL)
-  var INICIO=9*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
+  var INICIO=8*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
 
   function $(i){return document.getElementById(i);}
   function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
@@ -120,18 +120,22 @@ textarea{min-height:90px;resize:vertical}
     });
   });
 
-  /* 2) dias úteis a partir de amanhã */
+  /* 2) dias úteis a partir de hoje */
   function montarDias(){
     var box=$("dias");box.textContent="";
     var d=new Date();d.setHours(12,0,0,0);var n=0;
     while(n<DIAS){
-      d.setDate(d.getDate()+1);var w=d.getDay();if(w===0||w===6)continue;n++;
-      (function(dt){
-        var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
-        b.type="button";b.setAttribute("aria-pressed","false");
-        b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
-        box.appendChild(b);
-      })(new Date(d));
+      var w=d.getDay();
+      if(w!==0&&w!==6){
+        n++;
+        (function(dt){
+          var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
+          b.type="button";b.setAttribute("aria-pressed","false");
+          b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
+          box.appendChild(b);
+        })(new Date(d));
+      }
+      d.setDate(d.getDate()+1);
     }
   }
 
@@ -143,7 +147,9 @@ textarea{min-height:90px;resize:vertical}
       box.textContent="";
       if(r.error){box.appendChild(el("span","erro","Não foi possível carregar os horários. Tente novamente."));return;}
       var oc=(r.data||[]).map(function(o){var s=mins(o.ini);return [s,s+(+o.dur||30)];}),livres=0;
+      var hoje=iso(new Date()), agora=new Date(), minutoAtual=agora.getHours()*60+agora.getMinutes();
       for(var m=INICIO;m+DUR<=FIM;m+=30){
+        if(st.data===hoje&&m<=minutoAtual)continue;
         if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;
         var ocupado=oc.some(function(o){return o[0]<m+DUR&&o[1]>m;});
         if(ocupado)continue;livres++;
