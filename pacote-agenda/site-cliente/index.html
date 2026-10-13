@@ -66,10 +66,11 @@ textarea{min-height:90px;resize:vertical}
   <section id="s0" hidden><p class="erro" id="cfg"></p></section>
 
   <section id="s1"><h2>1. Escolha o advogado</h2><div class="opts" id="advs"><p class="hint">Carregando…</p></div></section>
-  <section id="s2" hidden><h2>2. Escolha o dia</h2><div class="chips" id="dias"></div></section>
+  <section id="s2" hidden><h2>2. Escolha o dia</h2><div class="chips" id="dias"></div><p class="hint">Fins de semana, feriados e folgas não aparecem.</p></section>
   <section id="s3" hidden>
     <h2>3. Escolha o horário</h2>
     <div class="chips" id="slots"></div>
+    <p class="hint" id="hojeNota" hidden></p>
     <p class="hint" id="semHor" hidden>Não há horários livres neste dia. Escolha outra data.</p>
   </section>
   <section id="s4" hidden>
@@ -103,7 +104,7 @@ textarea{min-height:90px;resize:vertical}
   var SUPABASE_ANON_KEY="sb_publishable_BDE5SPULJZwzmkPDkjRgLg_me9V9S3G";
   var ESCRITORIO="Durão & Almeida, Pontes - Advogados Associados";
   // Expediente (precisa ser igual ao da função solicitar_reuniao no SQL)
-  var INICIO=9*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
+  var INICIO=9*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14, ANTECEDENCIA=60; // ANTECEDENCIA: minutos mínimos para pedidos no mesmo dia
 
   function $(i){return document.getElementById(i);}
   function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
@@ -130,29 +131,45 @@ textarea{min-height:90px;resize:vertical}
     r.data.forEach(function(a){
       var b=el("button","opt");b.type="button";b.setAttribute("aria-pressed","false");
       b.appendChild(el("span",null,a.nome));if(a.area)b.appendChild(el("small",null,a.area));
-      b.onclick=function(){marcar(box,b);st={adv:a,data:null,ini:null};mostrar("s3",false);mostrar("s4",false);montarDias();mostrar("s2",true);};
+      b.onclick=function(){marcar(box,b);st={adv:a,data:null,ini:null};mostrar("s3",false);mostrar("s4",false);carregarBloqueios(a.id).then(function(){montarDias();mostrar("s2",true);});};
       box.appendChild(b);
     });
   });
 
-  /* 2) dias úteis a partir de amanhã */
+  /* 2) dias disponíveis: hoje em diante, sem fins de semana, feriados e folgas */
+  var bloq={};
+  function carregarBloqueios(id){
+    return sb.rpc("dias_bloqueados_publicos",{p_advogado:id}).then(function(r){
+      bloq={};if(!r.error&&r.data)r.data.forEach(function(x){bloq[x.data]=true;});
+    });
+  }
+  function candidatos(){var l=[];for(var m=INICIO;m+DUR<=FIM;m+=30){if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;l.push(m);}return l;}
+  function agoraMin(){var n=new Date();return n.getHours()*60+n.getMinutes();}
   function montarDias(){
     var box=$("dias");box.textContent="";
-    var d=new Date();d.setHours(12,0,0,0);var n=0;
-    while(n<DIAS){
-      d.setDate(d.getDate()+1);var w=d.getDay();if(w===0||w===6)continue;n++;
-      (function(dt){
-        var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
-        b.type="button";b.setAttribute("aria-pressed","false");
-        b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
-        box.appendChild(b);
-      })(new Date(d));
+    var d=new Date();d.setHours(12,0,0,0);var n=0,hoje=iso(d),guard=0;
+    while(n<DIAS&&guard++<90){
+      var w=d.getDay(),k=iso(d),ok=w!==0&&w!==6&&!bloq[k];
+      if(ok&&k===hoje)ok=candidatos().some(function(m){return m>=agoraMin()+ANTECEDENCIA;});
+      if(ok){
+        n++;
+        (function(dt,key){
+          var t=dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"});
+          var b=el("button","chip",(key===hoje?"Hoje · ":"")+t);
+          b.type="button";b.setAttribute("aria-pressed","false");
+          b.onclick=function(){marcar(box,b);st.data=key;st.ini=null;mostrar("s4",false);montarHorarios();};
+          box.appendChild(b);
+        })(new Date(d),k);
+      }
+      d.setDate(d.getDate()+1);
     }
+    if(!box.children.length)box.appendChild(el("span","hint","Não há dias disponíveis para este advogado no momento."));
   }
 
   /* 3) horários livres */
   function montarHorarios(){
     var box=$("slots");box.textContent="";mostrar("s3",true);mostrar("semHor",false);
+    $("hojeNota").hidden=st.data!==iso(new Date());$("hojeNota").textContent="Para hoje, só aparecem horários com pelo menos "+ANTECEDENCIA+" minutos de antecedência.";
     box.appendChild(el("span","hint","Carregando horários…"));
     sb.rpc("horarios_ocupados",{p_advogado:st.adv.id,p_data:st.data}).then(function(r){
       box.textContent="";
@@ -160,6 +177,7 @@ textarea{min-height:90px;resize:vertical}
       var oc=(r.data||[]).map(function(o){var s=mins(o.ini);return [s,s+(+o.dur||30)];}),livres=0;
       for(var m=INICIO;m+DUR<=FIM;m+=30){
         if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;
+        if(st.data===iso(new Date())&&m<agoraMin()+ANTECEDENCIA)continue;
         var ocupado=oc.some(function(o){return o[0]<m+DUR&&o[1]>m;});
         if(ocupado)continue;livres++;
         (function(mm){
