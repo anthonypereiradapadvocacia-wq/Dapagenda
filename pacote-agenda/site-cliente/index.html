@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%230f172a%27/%3E%3Ctext x=%2732%27 y=%2741%27 text-anchor=%27middle%27 font-family=%27Arial,sans-serif%27 font-size=%2724%27 font-weight=%27bold%27 fill=%27white%27%3EDAP%3C/text%3E%3C/svg%3E">
 <title>Solicitar reunião</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -53,7 +52,7 @@ textarea{min-height:90px;resize:vertical}
 <div class="wrap">
   <p class="firma" id="firma"></p>
   <h1 id="esc">Solicitar reunião</h1>
-  <p class="lead">Escolha o advogado, o dia e um horário livre. Cada reunião tem 30 minutos e será confirmada pela nossa equipe.</p>
+  <p class="lead">Escolha o advogado, o dia e um horário livre. Cada reunião tem <span id="durTxt">30</span> minutos e será confirmada pela nossa equipe.</p>
 
   <section class="info" id="info">
     <h2>Sobre a reunião</h2>
@@ -80,7 +79,7 @@ textarea{min-height:90px;resize:vertical}
     <form id="f">
       <label for="nome">Nome completo</label><input id="nome" required minlength="2" maxlength="120" autocomplete="name">
       <label for="tel">WhatsApp com DDD</label><input id="tel" type="tel" required minlength="8" maxlength="30" autocomplete="tel">
-      <label for="mail">E-mail</label><input id="mail" type="email" required maxlength="160" autocomplete="email">
+      <label for="doc">CPF ou CNPJ</label><input id="doc" required maxlength="18" inputmode="text" autocomplete="off" placeholder="000.000.000-00">
       <label for="assunto">Assunto da reunião</label><textarea id="assunto" required minlength="3" maxlength="600" placeholder="Conte brevemente o que você precisa."></textarea>
       <input class="hp" id="site" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label class="lgpd"><input type="checkbox" id="lgpd" required>Autorizo o escritório a usar estes dados para entrar em contato sobre a reunião.</label>
@@ -115,6 +114,28 @@ textarea{min-height:90px;resize:vertical}
   function mins(t){var p=String(t).split(":");return (+p[0])*60+(+p[1]);}
   function mostrar(id,v){$(id).hidden=!v;}
   function marcar(box,btn){[].forEach.call(box.children,function(b){b.setAttribute("aria-pressed",b===btn?"true":"false");});}
+  function limpaDoc(v){return String(v).replace(/[^0-9a-z]/gi,"").toUpperCase();}
+  function mascara(v){
+    var d=limpaDoc(v).slice(0,14),o;
+    if(d.length<=11&&/^\d*$/.test(d)){
+      o=d.slice(0,3);if(d.length>3)o+="."+d.slice(3,6);if(d.length>6)o+="."+d.slice(6,9);if(d.length>9)o+="-"+d.slice(9);return o;
+    }
+    o=d.slice(0,2);if(d.length>2)o+="."+d.slice(2,5);if(d.length>5)o+="."+d.slice(5,8);if(d.length>8)o+="/"+d.slice(8,12);if(d.length>12)o+="-"+d.slice(12);return o;
+  }
+  function docValido(v){
+    var d=limpaDoc(v),i,s,r,k;
+    if(/^(.)\1+$/.test(d))return false;
+    if(d.length===11&&/^\d+$/.test(d)){
+      for(k=0;k<2;k++){s=0;for(i=0;i<9+k;i++)s+=(+d[i])*(10+k-i);r=(s*10)%11;if(r===10)r=0;if(r!==+d[9+k])return false;}
+      return true;
+    }
+    if(d.length===14&&/^[0-9A-Z]{12}\d\d$/.test(d)){
+      var w1=[5,4,3,2,9,8,7,6,5,4,3,2],w2=[6].concat(w1);
+      var dv=function(n,w){var t=0;for(var j=0;j<n;j++)t+=(d.charCodeAt(j)-48)*w[j];var q=t%11;return q<2?0:11-q;};
+      return dv(12,w1)===+d[12]&&dv(13,w2)===+d[13];
+    }
+    return false;
+  }
   var st={adv:null,data:null,ini:null}, sb=null;
 
   $("firma").textContent=ESCRITORIO;
@@ -124,6 +145,8 @@ textarea{min-height:90px;resize:vertical}
     $("cfg").textContent="Configure SUPABASE_URL e SUPABASE_ANON_KEY no começo do script (veja o README).";return;
   }
   sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  sb.rpc("config_publica").then(function(r){if(!r.error&&r.data&&r.data.length)DUR=+r.data[0].duracao||30;$("durTxt").textContent=DUR;});
+  $("doc").addEventListener("input",function(){this.value=mascara(this.value);});
 
   /* 1) advogados */
   sb.rpc("listar_advogados").then(function(r){
@@ -144,7 +167,7 @@ textarea{min-height:90px;resize:vertical}
       bloq={};if(!r.error&&r.data)r.data.forEach(function(x){bloq[x.data]=true;});
     });
   }
-  function candidatos(){var l=[];for(var m=INICIO;m+DUR<=FIM;m+=30){if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;l.push(m);}return l;}
+  function candidatos(){var l=[];for(var m=INICIO;m+DUR<=FIM;m+=DUR){if(m<ALMOCO_FIM&&m+DUR>ALMOCO_INI)continue;l.push(m);}return l;}
   function agoraMin(){var n=new Date();return n.getHours()*60+n.getMinutes();}
   function montarDias(){
     var box=$("dias");box.textContent="";
@@ -176,8 +199,8 @@ textarea{min-height:90px;resize:vertical}
       box.textContent="";
       if(r.error){box.appendChild(el("span","erro","Não foi possível carregar os horários. Tente novamente."));return;}
       var oc=(r.data||[]).map(function(o){var s=mins(o.ini);return [s,s+(+o.dur||30)];}),livres=0;
-      for(var m=INICIO;m+DUR<=FIM;m+=30){
-        if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;
+      for(var m=INICIO;m+DUR<=FIM;m+=DUR){
+        if(m<ALMOCO_FIM&&m+DUR>ALMOCO_INI)continue;
         if(st.data===iso(new Date())&&m<agoraMin()+ANTECEDENCIA)continue;
         var ocupado=oc.some(function(o){return o[0]<m+DUR&&o[1]>m;});
         if(ocupado)continue;livres++;
@@ -201,10 +224,11 @@ textarea{min-height:90px;resize:vertical}
   $("f").addEventListener("submit",function(e){
     e.preventDefault();
     if($("site").value){fim();return;} // anti-robô: campo invisível preenchido
+    if(!docValido($("doc").value)){$("erro").textContent="CPF ou CNPJ inválido. Confira os números.";return;}
     var btn=$("enviar");btn.disabled=true;btn.textContent="Enviando…";$("erro").textContent="";
     sb.rpc("solicitar_reuniao",{
       p_advogado:st.adv.id,p_data:st.data,p_ini:st.ini,
-      p_nome:$("nome").value,p_tel:$("tel").value,p_mail:$("mail").value,p_assunto:$("assunto").value
+      p_nome:$("nome").value,p_tel:$("tel").value,p_doc:limpaDoc($("doc").value),p_assunto:$("assunto").value
     }).then(function(r){
       btn.disabled=false;btn.textContent="Solicitar reunião";
       if(r.error){
