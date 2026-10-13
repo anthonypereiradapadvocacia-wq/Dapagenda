@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%230f172a%27/%3E%3Ctext x=%2732%27 y=%2741%27 text-anchor=%27middle%27 font-family=%27Arial,sans-serif%27 font-size=%2724%27 font-weight=%27bold%27 fill=%27white%27%3EDAP%3C/text%3E%3C/svg%3E">  
 <title>Solicitar reunião</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -42,6 +41,10 @@ textarea{min-height:90px;resize:vertical}
 .hint{color:var(--muted);font-size:14px;margin:8px 0 0}
 .erro{color:var(--err);font-size:14px;margin:10px 0 0}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.info p{margin:0 0 12px}
+.info p:last-child{margin:0}
+.info a{color:var(--accent);font-weight:600}
+.info .aviso{background:var(--sel);border-left:4px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 12px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -50,6 +53,15 @@ textarea{min-height:90px;resize:vertical}
   <p class="firma" id="firma"></p>
   <h1 id="esc">Solicitar reunião</h1>
   <p class="lead">Escolha o advogado, o dia e um horário livre. Cada reunião tem 30 minutos e será confirmada pela nossa equipe.</p>
+
+  <section class="info" id="info">
+    <h2>Sobre a reunião</h2>
+    <p>Olá, esta reunião tem como objetivo apresentar informações atualizadas sobre o andamento do seu processo, esclarecer dúvidas, explicar as próximas etapas e alinhar eventuais providências necessárias.</p>
+    <p>Será também uma oportunidade para conversarmos sobre estratégias, prazos e demais pontos relevantes relacionados ao seu caso, garantindo total transparência e acompanhamento jurídico.</p>
+    <p>Caso possua alguma dúvida específica, recomendamos que a anote previamente para que possamos abordá-la durante a reunião.</p>
+    <p>Qualquer imprevisto, entre em contato através do número <a href="https://wa.me/5521980690069" target="_blank" rel="noopener">+55 21 98069-0069</a>.</p>
+    <p class="aviso"><strong>Quando agendar, aguarde a confirmação no WhatsApp.</strong></p>
+  </section>
 
   <section id="s0" hidden><p class="erro" id="cfg"></p></section>
 
@@ -65,19 +77,21 @@ textarea{min-height:90px;resize:vertical}
     <p class="resumo" id="resumo"></p>
     <form id="f">
       <label for="nome">Nome completo</label><input id="nome" required minlength="2" maxlength="120" autocomplete="name">
-      <label for="tel">Telefone com DDD</label><input id="tel" type="tel" required minlength="8" maxlength="30" autocomplete="tel">
+      <label for="tel">WhatsApp com DDD</label><input id="tel" type="tel" required minlength="8" maxlength="30" autocomplete="tel">
       <label for="mail">E-mail</label><input id="mail" type="email" required maxlength="160" autocomplete="email">
       <label for="assunto">Assunto da reunião</label><textarea id="assunto" required minlength="3" maxlength="600" placeholder="Conte brevemente o que você precisa."></textarea>
       <input class="hp" id="site" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label class="lgpd"><input type="checkbox" id="lgpd" required>Autorizo o escritório a usar estes dados para entrar em contato sobre a reunião.</label>
       <p class="erro" id="erro" role="alert"></p>
       <button class="go" id="enviar" type="submit">Solicitar reunião</button>
+      <p class="hint">Depois de enviar, aguarde a confirmação pelo WhatsApp.</p>
     </form>
   </section>
   <section id="ok" hidden>
     <h2>Solicitação enviada</h2>
     <p id="okTxt"></p>
-    <p class="hint">O horário só está reservado depois da confirmação da nossa equipe, por <a href="https://web.whatsapp.com/" target="_blank" rel="noopener noreferrer">WhatsApp</a>, por Ligação ou e-mail.</p>
+    <p><strong>Agora é só aguardar a confirmação pelo WhatsApp.</strong> O horário só fica reservado depois que nossa equipe confirmar.</p>
+    <p class="hint">Qualquer imprevisto, entre em contato: <a href="https://wa.me/5521980690069" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">+55 21 98069-0069</a></p>
   </section>
 </div>
 
@@ -89,7 +103,7 @@ textarea{min-height:90px;resize:vertical}
   var SUPABASE_ANON_KEY="sb_publishable_BDE5SPULJZwzmkPDkjRgLg_me9V9S3G";
   var ESCRITORIO="Durão & Almeida, Pontes - Advogados Associados";
   // Expediente (precisa ser igual ao da função solicitar_reuniao no SQL)
-  var INICIO=8*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
+  var INICIO=9*60, FIM=18*60, ALMOCO_INI=12*60+30, ALMOCO_FIM=13*60+30, DUR=30, DIAS=14;
 
   function $(i){return document.getElementById(i);}
   function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
@@ -121,22 +135,18 @@ textarea{min-height:90px;resize:vertical}
     });
   });
 
-  /* 2) dias úteis a partir de hoje */
+  /* 2) dias úteis a partir de amanhã */
   function montarDias(){
     var box=$("dias");box.textContent="";
     var d=new Date();d.setHours(12,0,0,0);var n=0;
     while(n<DIAS){
-      var w=d.getDay();
-      if(w!==0&&w!==6){
-        n++;
-        (function(dt){
-          var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
-          b.type="button";b.setAttribute("aria-pressed","false");
-          b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
-          box.appendChild(b);
-        })(new Date(d));
-      }
-      d.setDate(d.getDate()+1);
+      d.setDate(d.getDate()+1);var w=d.getDay();if(w===0||w===6)continue;n++;
+      (function(dt){
+        var b=el("button","chip",dt.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit"}));
+        b.type="button";b.setAttribute("aria-pressed","false");
+        b.onclick=function(){marcar(box,b);st.data=iso(dt);st.ini=null;mostrar("s4",false);montarHorarios();};
+        box.appendChild(b);
+      })(new Date(d));
     }
   }
 
@@ -148,9 +158,7 @@ textarea{min-height:90px;resize:vertical}
       box.textContent="";
       if(r.error){box.appendChild(el("span","erro","Não foi possível carregar os horários. Tente novamente."));return;}
       var oc=(r.data||[]).map(function(o){var s=mins(o.ini);return [s,s+(+o.dur||30)];}),livres=0;
-      var hoje=iso(new Date()), agora=new Date(), minutoAtual=agora.getHours()*60+agora.getMinutes();
       for(var m=INICIO;m+DUR<=FIM;m+=30){
-        if(st.data===hoje&&m<=minutoAtual)continue;
         if(m>=ALMOCO_INI&&m<ALMOCO_FIM)continue;
         var ocupado=oc.some(function(o){return o[0]<m+DUR&&o[1]>m;});
         if(ocupado)continue;livres++;
