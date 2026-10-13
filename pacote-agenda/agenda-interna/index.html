@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%230f172a%27/%3E%3Ctext x=%2732%27 y=%2741%27 text-anchor=%27middle%27 font-family=%27Arial,sans-serif%27 font-size=%2724%27 font-weight=%27bold%27 fill=%27white%27%3EDAP%3C/text%3E%3C/svg%3E">
 <title>Agenda · Durão &amp; Almeida, Pontes - Advogados Associados</title>
 <meta name="robots" content="noindex,nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -50,13 +49,13 @@ button.danger{color:var(--now)}
 .stats b{color:var(--ink)}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:10px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border-left:4px solid}
-.cal-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.cal-scroll{overflow:auto;max-height:calc(100vh - 240px);min-height:380px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
 .cal{display:grid;grid-template-columns:56px 1fr}
 .head{position:sticky;top:0;z-index:3;background:var(--surface);border-bottom:1px solid var(--line);padding:10px;border-left:1px solid var(--line)}
-.head.corner{border-left:0}
+.head.corner{border-left:0;left:0;z-index:4}
 .head strong{display:block;font-size:14px}
 .head span{font-size:12.5px;color:var(--muted)}
-.times{position:relative}
+.times{position:sticky;left:0;z-index:2;background:var(--surface);border-right:1px solid var(--line)}
 .times div{position:absolute;right:8px;font-size:12px;color:var(--muted);transform:translateY(-50%)}
 .col{position:relative;border-left:1px solid var(--line);cursor:cell;
   background-image:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent var(--h)),
@@ -92,11 +91,32 @@ ul.l li{display:flex;justify-content:space-between;gap:10px;align-items:center;p
 ul.l span{color:var(--muted);font-size:13.5px;display:block}
 .hint{color:var(--muted);font-size:14px;margin:0 0 8px}
 footer{margin-top:16px;color:var(--muted);font-size:13px}
+.head em{display:block;font-style:normal;font-size:12px;font-weight:600;color:var(--accent);margin-top:2px}
+.seg{display:inline-flex}
+.seg button{border-radius:0}
+.seg button:first-child{border-radius:6px 0 0 6px}
+.seg button:last-child{border-radius:0 6px 6px 0;margin-left:-1px}
+.seg button[aria-pressed="true"],.filtro .chip[aria-pressed="true"]{background:var(--btn-bg);color:var(--btn-ink);border-color:var(--btn-bg)}
+.filtro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.filtro[hidden]{display:none}
+.filtro .chip{border-radius:999px;padding:4px 12px;font-size:13px}
+.lista{display:grid;gap:8px;padding:12px}
+.li{display:flex;gap:14px;text-align:left;padding:10px 14px;border:0;border-left:4px solid;border-radius:8px;font:inherit;cursor:pointer;color:var(--ink)}
+.li[data-type="interno"]{background:var(--interno-bg);border-color:var(--interno-bd)}
+.li[data-type="cliente"]{background:var(--cliente-bg);border-color:var(--cliente-bd)}
+.li[data-type="audiencia"]{background:var(--audiencia-bg);border-color:var(--audiencia-bd)}
+.li[data-type="prazo"]{background:var(--prazo-bg);border-color:var(--prazo-bd)}
+.li .hr{min-width:62px}
+.li .hr b{display:block;font-family:var(--serif);font-size:21px;line-height:1.1}
+.li .hr small{color:var(--muted);font-size:12.5px}
+.li .dt span{display:block;font-size:14px}
+.li .dt .m{color:var(--muted);font-size:13px}
+.li.done{opacity:.55}.li.done strong{text-decoration:line-through}
 @media (max-width:560px){.row{grid-template-columns:1fr}}
 @media print{
   body{background:#fff;color:#000}
-  .bar,header .stats,footer,dialog{display:none!important}
-  .cal-scroll{overflow:visible;border:0}
+  .bar,.filtro,header .stats,footer,dialog{display:none!important}
+  .cal-scroll{overflow:visible;border:0;max-height:none}
 }
 </style>
 </head>
@@ -118,6 +138,7 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
       <input type="date" id="dia" aria-label="Escolher data">
     </div>
     <span class="sp"></span>
+    <div class="seg" role="group" aria-label="Visualização"><button type="button" id="vGrade" aria-pressed="true">Grade</button><button type="button" id="vLista" aria-pressed="false">Lista</button></div>
     <button type="button" id="bSol">Solicitações <b id="nSol"></b></button>
     <button type="button" id="bAdv">Advogados</button>
     <button type="button" id="bCli">Clientes</button>
@@ -126,6 +147,8 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     <button type="button" id="bSair" style="display:none">Sair</button>
   </div>
 
+  <div class="filtro" id="filtro" hidden></div>
+
   <div class="legend">
     <span><i style="border-color:var(--interno-bd);background:var(--interno-bg)"></i>Interna</span>
     <span><i style="border-color:var(--cliente-bd);background:var(--cliente-bg)"></i>Cliente</span>
@@ -133,7 +156,7 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     <span><i style="border-color:var(--prazo-bd);background:var(--prazo-bg)"></i>Prazo fatal</span>
   </div>
 
-  <div class="cal-scroll"><div class="cal" id="cal"><div class="empty">Carregando…</div></div></div>
+  <div class="cal-scroll" id="calscroll"><div class="cal" id="cal"><div class="empty">Carregando…</div></div></div>
   <footer id="modo"></footer>
 </div>
 
@@ -211,9 +234,9 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
-  var H=80,START=8,END=18;
+  var H=96,START=8,END=19;
   var NAMES={adv:"advogados",cli:"clientes",reu:"reunioes",sol:"solicitacoes"};
-  var S={adv:[],cli:[],reu:[],sol:[]}, db=null, editId=null, cur=iso(new Date());
+  var S={adv:[],cli:[],reu:[],sol:[]}, db=null, editId=null, cur=iso(new Date()), view=(window.matchMedia&&matchMedia("(max-width:700px)").matches?"lista":"grade"), oculto={}, ultimoDia=null, rolar=false;
   var TIPOS={interno:"Interna",cliente:"Cliente",audiencia:"Audiência",prazo:"Prazo fatal"};
   function $(i){return document.getElementById(i);}
   function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
@@ -261,20 +284,48 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
   }
 
   /* ---------- calendário ---------- */
+  function renderControles(){
+    $("vGrade").setAttribute("aria-pressed",view==="grade");$("vLista").setAttribute("aria-pressed",view==="lista");
+    var f=$("filtro"),todos=S.adv.slice().sort(byNome);f.textContent="";f.hidden=todos.length<2;
+    if(todos.length<2)return;
+    f.appendChild(el("span",null,"Mostrar:"));
+    todos.forEach(function(a){
+      var b=el("button","chip",a.nome);b.type="button";b.setAttribute("aria-pressed",oculto[a.id]?"false":"true");
+      b.onclick=function(){oculto[a.id]=!oculto[a.id];render();};f.appendChild(b);
+    });
+  }
+  function listaDia(dia,cal){
+    var w=el("div","lista");
+    var l=dia.filter(function(r){return (r.adv||[]).some(function(id){return !oculto[id];});}).sort(function(a,b){return mins(a.ini)-mins(b.ini);});
+    if(!l.length)w.appendChild(el("p","empty",'Nenhuma reunião neste dia. Use "Nova reunião" para agendar.'));
+    l.forEach(function(r){
+      var c=find("cli",r.clienteId),cn=c?c.nome:"(cliente removido)",e=mins(r.ini)+(+r.dur||30);
+      var b=el("button","li"+(r.feito?" done":""));b.type="button";b.dataset.type=r.tipo||"cliente";
+      var t=el("div","hr");t.appendChild(el("b",null,r.ini));t.appendChild(el("small",null,"até "+hhmm(e)));
+      var d=el("div","dt");d.appendChild(el("strong",null,(r.feito?"✓ ":"")+cn));d.appendChild(el("span",null,r.assunto));
+      var quem=(r.adv||[]).map(function(id){var a=find("adv",id);return a?a.nome:"";}).filter(Boolean).join(", ");
+      d.appendChild(el("span","m",[TIPOS[r.tipo]||"",quem,r.local].filter(Boolean).join(" · ")));
+      b.appendChild(t);b.appendChild(d);b.onclick=function(){abrirReu(r);};w.appendChild(b);
+    });
+    cal.appendChild(w);
+  }
   function render(){
+    if(cur!==ultimoDia){ultimoDia=cur;rolar=true;}
+    renderControles();
     var d=new Date(cur+"T12:00:00"),t=d.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
     $("data").textContent=t.charAt(0).toUpperCase()+t.slice(1);
     $("dia").value=cur;
-    var cal=$("cal"),advs=S.adv.slice().sort(byNome);
+    var cal=$("cal"),todos=S.adv.slice().sort(byNome),advs=todos.filter(function(a){return !oculto[a.id];});
     cal.textContent="";
     var dia=S.reu.filter(function(r){return r.data===cur;});
     $("total").textContent=dia.length;
     $("feitas").textContent=dia.filter(function(r){return r.feito;}).length;
-    if(!advs.length){
+    if(view==="lista"){cal.style.gridTemplateColumns="1fr";cal.style.minWidth="0";listaDia(dia,cal);}
+    else if(!advs.length){
       cal.style.gridTemplateColumns="1fr";cal.style.minWidth="0";
-      var e=el("div","empty");e.appendChild(el("p",null,"Nenhum advogado cadastrado. Cada advogado vira uma coluna da agenda."));
+      var e=el("div","empty");e.appendChild(el("p",null,todos.length?"Nenhum advogado selecionado. Use os filtros acima.":"Nenhum advogado cadastrado. Cada advogado vira uma coluna da agenda."));
       var b=el("button","primary","Cadastrar advogado");b.type="button";b.onclick=function(){abrirAdv();};
-      e.appendChild(b);cal.appendChild(e);
+      if(!todos.length)e.appendChild(b);cal.appendChild(e);
     }else{
       cal.style.gridTemplateColumns="56px repeat("+advs.length+",minmax(190px,1fr))";
       cal.style.minWidth=(56+advs.length*190)+"px";
@@ -283,7 +334,7 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
       advs.forEach(function(a){
         var h=el("div","head");h.appendChild(el("strong",null,a.nome));
         var sub=[a.area,a.oab?"OAB "+a.oab:""].filter(Boolean).join(" · ");
-        if(sub)h.appendChild(el("span",null,sub));cal.appendChild(h);
+        if(sub)h.appendChild(el("span",null,sub));var nr=dia.filter(function(r){return (r.adv||[]).indexOf(a.id)>-1;}).length;h.appendChild(el("em",null,nr+(nr===1?" reunião":" reuniões")));cal.appendChild(h);
       });
       var tm=el("div","times");tm.style.height=total+"px";
       for(var h=START;h<=END;h++){var l=el("div",null,pad(h)+":00");l.style.top=((h-START)*H)+"px";tm.appendChild(l);}
@@ -306,8 +357,9 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
           var b=el("button","ev"+(r.feito?" done":""));b.type="button";b.dataset.type=r.tipo||"cliente";
           b.style.top=((s-START*60)/60*H)+"px";b.style.height=(dur/60*H-2)+"px";
           b.style.left="calc("+(lane*100/n)+"% + 3px)";b.style.width="calc("+(100/n)+"% - 6px)";
-          if(dur<=30){b.appendChild(el("b",null,r.ini+" "+cn));}
-          else{b.appendChild(el("b",null,cn));b.appendChild(el("small",null,r.ini+"–"+hhmm(e)+" · "+r.assunto));}
+          var mk=r.feito?"✓ ":"";
+          if(dur<=30){b.appendChild(el("b",null,mk+r.ini+" · "+cn));b.appendChild(el("small",null,r.assunto));}
+          else{b.appendChild(el("b",null,mk+cn));b.appendChild(el("small",null,r.ini+"–"+hhmm(e)+" · "+r.assunto));if(dur>=60&&r.local)b.appendChild(el("small",null,r.local));}
           b.title=cn+" · "+r.assunto+" ("+r.ini+"–"+hhmm(e)+")";
           b.addEventListener("click",function(ev){ev.stopPropagation();abrirReu(r);});
           col.appendChild(b);
@@ -315,6 +367,12 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
         if(cur===iso(now)&&nm>=START*60&&nm<=END*60){var nl=el("div","now");nl.style.top=((nm-START*60)/60*H)+"px";col.appendChild(nl);}
         cal.appendChild(col);
       });
+    }
+    if(rolar&&view==="grade"&&advs.length){
+      var alvo=null,ag=new Date(),n0=ag.getHours()*60+ag.getMinutes();
+      if(cur===iso(ag)&&n0>=START*60&&n0<=END*60)alvo=n0;
+      else if(dia.length)alvo=Math.min.apply(null,dia.map(function(r){return mins(r.ini);}));
+      if(alvo!=null){$("calscroll").scrollTop=Math.max(0,(alvo-START*60)/60*H-70);rolar=false;}
     }
     var np=S.sol.filter(function(x){return x.status==="pendente";}).length;
     $("nSol").textContent=np?"("+np+")":"";
@@ -394,9 +452,6 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     });
   }
   function aceitar(x){
-    // A janela é aberta no clique para evitar bloqueio de pop-up; o WhatsApp
-    // só é aberto depois que a solicitação for aceita e a reunião for criada.
-    var wa=window.open("about:blank","_blank");
     var ex=S.cli.filter(function(c){return c.mail&&c.mail.toLowerCase()===x.mail.toLowerCase();})[0];
     var cp=ex?Promise.resolve(ex.id):sb.from("clientes").insert({nome:x.nome,tel:x.tel,mail:x.mail}).select("id").single().then(function(r){if(r.error)throw r.error;return r.data.id;});
     cp.then(function(cid){
@@ -404,24 +459,8 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     }).then(function(r){
       if(r.error)throw r.error;
       return sb.from("solicitacoes").update({status:"aceita"}).eq("id",x.id);
-    }).then(function(r){
-      if(r&&r.error)throw r.error;
-      ["cli","reu","sol"].forEach(load);
-      var tel=String(x.tel||"").replace(/\\D/g,"");
-      if(tel.length===10||tel.length===11)tel="55"+tel;
-      if(!tel){
-        if(wa)wa.close();
-        alert("Solicitação aceita, mas o telefone do cliente está vazio. Entre em contato manualmente.");
-        return;
-      }
-      var data=x.data.split("-").reverse().join("/");
-      var texto="Olá, "+x.nome+"! Sua solicitação de reunião para "+data+" às "+String(x.ini).slice(0,5)+" foi aceita pela equipe do escritório Durão & Almeida, Pontes - Advogados Associados. Se precisar, estamos à disposição.";
-      var url="https://wa.me/"+tel+"?text="+encodeURIComponent(texto);
-      if(wa)wa.location.href=url;else window.location.href=url;
-    }).catch(function(e){
-      if(wa)wa.close();
-      alert("Não foi possível aceitar: "+((e&&e.message)||e));
-    });
+    }).then(function(){["cli","reu","sol"].forEach(load);})
+    .catch(function(e){alert("Não foi possível aceitar: "+((e&&e.message)||e));});
   }
   function recusar(x){sb.from("solicitacoes").update({status:"recusada"}).eq("id",x.id).then(function(){load("sol");});}
 
@@ -503,6 +542,7 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
 
   /* ---------- eventos gerais ---------- */
   [].forEach.call(document.querySelectorAll("[data-close]"),function(b){b.addEventListener("click",function(){b.closest("dialog").close();});});
+  $("vGrade").onclick=function(){view="grade";rolar=true;render();};$("vLista").onclick=function(){view="lista";render();};
   $("bSol").onclick=function(){listSol();$("dSol").showModal();};$("bAdv").onclick=abrirAdv;$("bCli").onclick=abrirCli;$("bNova").onclick=function(){abrirReu(null);};
   $("prev").onclick=function(){shift(-1);};$("next").onclick=function(){shift(1);};
   $("hoje").onclick=function(){cur=iso(new Date());render();};
